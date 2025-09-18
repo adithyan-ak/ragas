@@ -235,12 +235,28 @@ def evaluate(
         cost_cb = CostCallbackHandler(token_usage_parser=token_usage_parser)
         ragas_callbacks["cost_cb"] = cost_cb
 
-    # append all the ragas_callbacks to the callbacks
-    for cb in ragas_callbacks.values():
-        if isinstance(callbacks, BaseCallbackManager):
+    # Validate callbacks parameter
+    # Accept either a BaseCallbackManager or a list of BaseCallbackHandler instances
+    # For security, only allow known safe callback handlers
+    allowed_callback_types = (BaseCallbackManager, BaseCallbackHandler)
+
+    if callbacks is None:
+        callbacks = []
+
+    # Normalize callbacks to list for processing
+    if isinstance(callbacks, BaseCallbackManager):
+        # Add handlers directly
+        for cb in ragas_callbacks.values():
             callbacks.add_handler(cb)
-        else:
-            callbacks.append(cb)
+    elif isinstance(callbacks, list):
+        # Ensure all elements are instances of BaseCallbackHandler
+        for cb in callbacks:
+            if not isinstance(cb, BaseCallbackHandler):
+                raise TypeError(f"Invalid callback handler type: {type(cb)}")
+        # Add ragas callbacks
+        callbacks.extend(ragas_callbacks.values())
+    else:
+        raise TypeError(f"Unsupported callbacks type: {type(callbacks)}")
 
     # new evaluation chain
     row_run_managers = []
