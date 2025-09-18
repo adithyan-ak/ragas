@@ -104,7 +104,7 @@ def evaluate(
         if any of the metrics fail. If set to False, the evaluation will return `np.nan` for the row that failed. Default is False.
     column_map : dict[str, str], optional  
         The column names of the dataset to use for evaluation. If the column names of the dataset are different from the default ones, 
-        it is possible to provide the mapping as a dictionary here. Example: If the dataset column name is `contexts_v1`, it is possible to pass column_map as `{"contexts": "contexts_v1"}`.
+        it is possible to provide the mapping as a dictionary here. Example: If the dataset column name is `contexts_v1`, it is possible to pass column_map as `{\"contexts\": \"contexts_v1\"}`.
     show_progress : bool, optional  
         Whether to show the progress bar during evaluation. If set to False, the progress bar will be disabled. The default is True.
     batch_size : int, optional  
@@ -235,12 +235,20 @@ def evaluate(
         cost_cb = CostCallbackHandler(token_usage_parser=token_usage_parser)
         ragas_callbacks["cost_cb"] = cost_cb
 
-    # append all the ragas_callbacks to the callbacks
-    for cb in ragas_callbacks.values():
-        if isinstance(callbacks, BaseCallbackManager):
+    # Validate and append all the ragas_callbacks to the callbacks
+    # Enforce that callbacks is either a BaseCallbackManager or a list
+    if isinstance(callbacks, BaseCallbackManager):
+        # Add only known safe handlers
+        for cb_name, cb in ragas_callbacks.items():
             callbacks.add_handler(cb)
-        else:
+    elif isinstance(callbacks, list):
+        # Append only known safe handlers
+        for cb in ragas_callbacks.values():
             callbacks.append(cb)
+    else:
+        raise TypeError(
+            f"Invalid callbacks argument: expected BaseCallbackManager or list, got {type(callbacks)}"
+        )
 
     # new evaluation chain
     row_run_managers = []
