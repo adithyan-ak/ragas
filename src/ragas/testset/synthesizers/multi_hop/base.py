@@ -164,8 +164,16 @@ class MultiHopQuerySynthesizer(BaseSynthesizer[Scenario]):
             raise TypeError("scenario type should be MultiHopScenario")
         reference_context = self.make_contexts(scenario)
         prompt_input = QueryConditions(
-            persona=scenario.persona,
-            themes=scenario.combinations,
+
+        # Sanitize persona name and combinations to prevent prompt injection
+        sanitized_persona_name = scenario.persona.name.replace('\n', ' ').replace('\r', ' ').replace('{', '').replace('}', '')
+        sanitized_combinations = [c.replace('\n', ' ').replace('\r', ' ').replace('{', '').replace('}', '') for c in scenario.combinations]
+
+        sanitized_persona = scenario.persona.copy(update={'name': sanitized_persona_name})
+
+            persona=sanitized_persona,
+            themes=sanitized_combinations,
+
             context=reference_context,
             query_length=scenario.length.name,
             query_style=scenario.style.name,
