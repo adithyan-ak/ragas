@@ -166,7 +166,16 @@ class Testset(RagasDataset[TestsetSample]):
         Loads a testset from an annotated JSON file from app.ragas.io.
         """
         import json
+        Only allows loading files from a predefined safe directory.
+        import os
+        # Define a safe base directory for loading files
+        SAFE_BASE_DIR = os.path.abspath("./safe_annotated_files")
 
+        abs_path = os.path.abspath(path)
+        if not abs_path.startswith(SAFE_BASE_DIR + os.sep):
+            raise ValueError(f"Access to the file {path} is denied.")
+
+        with open(abs_path, "r") as f:
         with open(path, "r") as f:
             annotated_testset = json.load(f)
 
