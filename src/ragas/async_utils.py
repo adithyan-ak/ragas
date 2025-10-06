@@ -1,4 +1,4 @@
-"""Async utils."""
+  """Async utils."""
 
 import asyncio
 from typing import Any, Coroutine, List, Optional
@@ -14,6 +14,8 @@ def run_async_tasks(
     batch_size: Optional[int] = None,
     show_progress: bool = True,
     progress_bar_desc: str = "Running async tasks",
+    *,
+    _trusted: bool = False,
 ) -> List[Any]:
     """
     Execute async tasks with optional batching and progress tracking.
@@ -24,7 +26,13 @@ def run_async_tasks(
         tasks: List of coroutines to execute
         batch_size: Optional size for batching tasks. If None, runs all concurrently
         show_progress: Whether to display progress bars
+
+    Keyword Args:
+        _trusted: Internal flag to indicate if the caller is trusted to run arbitrary coroutines.
+                  This should NOT be set by external callers.
     """
+    if not _trusted:
+        raise PermissionError("run_async_tasks can only be called from trusted code to prevent arbitrary code execution.")
 
     async def _run():
         total_tasks = len(tasks)
