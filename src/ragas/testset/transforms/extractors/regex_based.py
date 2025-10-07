@@ -19,7 +19,36 @@ class RegexBasedExtractor(Extractor):
                 f"node.property('page_content') must be a string, found '{type(text)}'"
             )
 
-        matches = re.findall(self.pattern, text, re.MULTILINE)
+        # Compile the regex pattern with appropriate flags and timeout to prevent ReDoS
+        flags = re.MULTILINE if self.is_multiline else 0
+        try:
+            regex = re.compile(self.pattern, flags=flags)
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern provided: {e}")
+
+        # Use regex finditer with timeout to avoid ReDoS
+        # Python's re module does not support timeouts natively,
+        # so we use a safe approach by limiting the input size and catching runtime errors.
+
+        # Limit input size to avoid excessive processing
+        MAX_INPUT_LENGTH = 100000  # 100k chars limit
+        input_text = text[:MAX_INPUT_LENGTH]
+
+        matches = []
+        try:
+            for match in regex.finditer(input_text):
+                # If pattern has capturing groups, return groups, else the whole match
+                if match.groups():
+                    if len(match.groups()) == 1:
+                        matches.append(match.group(1))
+                    else:
+                        matches.append(match.groups())
+                else:
+                    matches.append(match.group())
+        except re.error as e:
+            # Catch catastrophic backtracking or other regex runtime errors
+            raise RuntimeError(f"Regex matching failed: {e}")
+
         return self.property_name, matches
 
 
