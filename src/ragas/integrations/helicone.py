@@ -44,7 +44,11 @@ class HeliconeSingleton:
         return cls._instance
 
     def default_headers(self) -> Dict[str, Any]:
-        headers = {"Helicone-Auth": f"Bearer {self.api_key}"}
+        headers = {}
+
+        # Only include sensitive headers if api_key is set and ensure it's not leaked inadvertently
+        if self.api_key:
+            headers["Helicone-Auth"] = f"Bearer {self.api_key}"
 
         if self.target_url:
             headers["Helicone-Target-URL"] = self.target_url
@@ -68,6 +72,8 @@ class HeliconeSingleton:
             headers["Helicone-Session-Path"] = self.session_path
         if self.session_name:
             headers["Helicone-Session-Name"] = self.session_name
+
+        # Only include posthog_key if explicitly set, avoid leaking sensitive keys
         if self.posthog_key:
             headers["Helicone-Posthog-Key"] = self.posthog_key
         if self.posthog_host:
@@ -78,7 +84,7 @@ class HeliconeSingleton:
             "Helicone-Omit-Response": self.omit_response,
             "Helicone-Omit-Request": self.omit_request,
             "Helicone-Cache-Enabled": (self.cache_enabled and "true")
-            or (self.cache_config.maxsize or self.cache_config.ttl and "true"),  # type: ignore
+            or (self.cache_config and (self.cache_config.maxsize or self.cache_config.ttl) and "true"),
             "Helicone-Retry-Enabled": self.retry_enabled,
             "Helicone-Moderations-Enabled": self.moderations_enabled,
             "Helicone-LLM-Security-Enabled": self.llm_security_enabled,
