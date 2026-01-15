@@ -211,11 +211,18 @@ class SummarizationScore(MetricWithLLM, SingleTurnMetric):
         response: ExtractedKeyphrases = await self.extract_keyphrases_prompt.generate(
             data=StringIO(text=text), llm=self.llm, callbacks=callbacks
         )
-        if not response:
-            logging.error("No keyphrases generated, unable to calculate the score.")
+        if not response or not isinstance(response.keyphrases, list):
+            logging.error("Invalid or no keyphrases generated, unable to calculate the score.")
             return []
 
-        return response.keyphrases
+        # Validate each keyphrase is a non-empty string
+        valid_keyphrases = []
+        for kp in response.keyphrases:
+            if isinstance(kp, str) and kp.strip():
+                valid_keyphrases.append(kp.strip())
+            else:
+                logging.warning(f"Invalid keyphrase detected and ignored: {kp}")
+        return valid_keyphrases
 
     async def _get_questions(
         self, text: str, keyphrases: list[str], callbacks: Callbacks
@@ -226,11 +233,18 @@ class SummarizationScore(MetricWithLLM, SingleTurnMetric):
             llm=self.llm,
             callbacks=callbacks,
         )
-        if not response:
-            logging.error("No questions generated, unable to calculate the score.")
+        if not response or not isinstance(response.questions, list):
+            logging.error("Invalid or no questions generated, unable to calculate the score.")
             return []
 
-        return response.questions
+        # Validate each question is a non-empty string
+        valid_questions = []
+        for q in response.questions:
+            if isinstance(q, str) and q.strip():
+                valid_questions.append(q.strip())
+            else:
+                logging.warning(f"Invalid question detected and ignored: {q}")
+        return valid_questions
 
     async def _get_answers(
         self, questions: t.List[str], summary: str, callbacks: Callbacks
@@ -241,7 +255,23 @@ class SummarizationScore(MetricWithLLM, SingleTurnMetric):
             llm=self.llm,
             callbacks=callbacks,
         )
-        return response.answers
+        if (
+            not response
+            or not hasattr(response, "answers")
+            or not isinstance(response.answers, list)
+        ):
+            logging.error("Invalid or no answers generated, unable to calculate the score.")
+            return []
+
+        # Validate each answer is either '0' or '1' as string
+        valid_answers = []
+        for a in response.answers:
+            if isinstance(a, str) and a.strip() in {"0", "1"}:
+                valid_answers.append(a.strip())
+            else:
+                logging.warning(f"Invalid answer detected and replaced with '0': {a}")
+                valid_answers.append("0")
+        return valid_answers
 
 
 summarization_score = SummarizationScore()
